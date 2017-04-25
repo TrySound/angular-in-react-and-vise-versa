@@ -14,6 +14,10 @@ const renderAngularInReact = (name, keys) => {
             }
         }
 
+        componentWillUnmount() {
+            this.$scope.$destroy();
+        }
+
         ref(element) {
             const tagName = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
             const $scope = this.context.$rootScope.$new();
