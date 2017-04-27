@@ -3,9 +3,16 @@ import contextTypes from './contextTypes.js';
 
 const renderAngularInReact = (name, keys) => {
     class wrapped extends React.Component {
-        constructor(props) {
+        constructor(props, context) {
             super(props);
             this.ref = this.ref.bind(this);
+            this.tagName = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+            this.bindings = keys.reduce((acc, key) => {
+                acc[key] = key;
+                return acc;
+            }, {});
+            this.$scope = context.$rootScope.$new();
+            this.renderAngular(this.props, true);
         }
 
         componentWillReceiveProps(nextProps) {
@@ -19,27 +26,28 @@ const renderAngularInReact = (name, keys) => {
         }
 
         ref(element) {
-            const tagName = name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-            const $scope = this.context.$rootScope.$new();
-            this.$scope = $scope;
-            this.renderAngular(this.props);
-            element.innerHTML = `
-                <${tagName} ${keys.map(key => `${key}="${key}"`).join(' ')}></${tagName}>
-            `;
-            this.context.$compile(element.childNodes)($scope);
+            if (element) {
+                this.context.$compile(element)(this.$scope);
+            }
         }
 
-        renderAngular(props) {
-            this.$scope.$evalAsync(() => {
+        renderAngular(props, sync) {
+            if (sync) {
                 keys.forEach(key => {
                     this.$scope[key] = props[key];
                 });
-            });
+            } else {
+                this.$scope.$evalAsync(() => {
+                    keys.forEach(key => {
+                        this.$scope[key] = props[key];
+                    });
+                });
+            }
         }
 
         render() {
             return (
-                React.createElement('div', { ref: this.ref })
+                React.createElement(this.tagName, Object.assign({}, this.bindings, { ref: this.ref }))
             );
         }
     }
